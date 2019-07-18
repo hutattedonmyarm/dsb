@@ -1,0 +1,9 @@
+"""
+Holds configuration values for DSB
+"""
+DSB = {
+    'login': '',
+    'password': '',
+    'class': '',
+    'loginbutton': 'Anmelden'
+}

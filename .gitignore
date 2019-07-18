@@ -1,0 +1,3 @@
+config.py
+*.sublime-*
+__pycache__
