@@ -33,9 +33,12 @@ def strike_adjusted_ljust(text, length):
     return text.ljust(length)
 
 def strike(text):
+    # Windows can't seem to handle the other one
+    if 'win' in sys.platform:
+        return '-' + text + '-'
     result = ''
     for c in text:
-        result = result + c + strike_char
+        result += c + strike_char
     return result
 
 def ascii_table(iterable, header):
