@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import re
 import zlib
 import base64
@@ -22,6 +23,21 @@ if version < (3, 7):
     print(f'Die installierte python Version {version.major}.{version.minor}.{version.micro} wird nicht unterstützt. Bitte installieren 3.7.0 oder höher', file=sys.stderr)
     sys.exit(1)
 
+strike_char = '\u0336'
+
+def strike_adjusted_len(text):
+    return len(text) - text.count(strike_char)
+
+def strike_adjusted_ljust(text, length):
+    length += text.count(strike_char)
+    return text.ljust(length)
+
+def strike(text):
+    result = ''
+    for c in text:
+        result = result + c + strike_char
+    return result
+
 def ascii_table(iterable, header):
     header_lens = [len(x) for x in header]
     num_cols = len(header)
@@ -30,7 +46,7 @@ def ascii_table(iterable, header):
         if len(row) != num_cols:
             raise Exception("Number of columns not consistent")
         for idx, col in enumerate(row):
-            header_lens[idx] = max(len(str(col)), header_lens[idx])
+            header_lens[idx] = max(strike_adjusted_len(str(col)), header_lens[idx])
     col_delim = ' | '
     first_col_delim = '| '
     last_col_delim = ' |'
@@ -49,7 +65,7 @@ def ascii_table(iterable, header):
     for row in iterable:
         out += first_col_delim
         for idx, col in enumerate(row):
-            out += col.ljust(header_lens[idx]) + (col_delim if idx != num_cols else last_col_delim)
+            out += strike_adjusted_ljust(col, header_lens[idx]) + (col_delim if idx != num_cols else last_col_delim)
         out += '\n'
     out += horizontal_decorator
     return out
@@ -67,7 +83,7 @@ if r.status_code != 200:
     sys.exit(1)
 event_validation = re.search(r'id=\"__EVENTVALIDATION\"\ value=\"([^\"]+)\"', r.text).group(1)
 viewstate = re.search(r'id=\"__VIEWSTATE\"\ value=\"([^\"]+)\"', r.text).group(1)
-r = s.post(base_url+'/Login.aspx', data = {
+r = s.post(base_url+'/Login.aspx', data= {
     'txtUser' : config.DSB['login'],
     'txtPass' : config.DSB['password'],
     '__VIEWSTATE' : viewstate,
@@ -95,8 +111,9 @@ decompressed = zlib.decompress(decoded, zlib.MAX_WBITS | 16)
 parsed = json.loads(decompressed.decode('utf-8'))
 
 plan_urls = []
+notice = config.DSB.get('notice', None)
 for plan in parsed['ResultMenuItems'][0]['Childs'][1]['Root']['Childs']:
-    if not 'Foyer' in plan['Title']:
+    if notice and not notice in plan['Title']:
         continue
     plan_urls.append(plan['Childs'][0]['Detail'])
 
@@ -117,11 +134,13 @@ for plan_url in plan_urls:
         for sub in subs.find_all('td', text=class_re):
             class_details = []
             for detail in sub.parent.find_all('td'):
-                txt = f'-{detail.strike.text}-' if detail.strike else detail.text
+                txt = f'{strike(detail.strike.text)}' if detail.strike else detail.text
                 class_details.append(txt)
             details.append(class_details)
-        sub_plan[date] = details
-
+        if date in sub_plan:
+            sub_plan[date].extend(details)
+        else:
+            sub_plan[date] = details
 for day in sub_plan:
     print(day)
     if len(sub_plan[day]):
